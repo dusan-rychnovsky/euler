@@ -4,32 +4,34 @@
 # The sum of the primes below 10 is 2 + 3 + 5 + 7 = 17. Find the sum of all the primes below two million.
 #
 
-def drop_while! arr, &block
-  unless arr.empty?
-    x = arr.first
-    if block.call(x)
-      arr.shift
-      drop_while! arr, &block
-    end
+def move arr, pos
+  while arr[pos] == -1
+    pos += 1
   end
+  pos
 end
 
-def sieve_once arr, p
-  arr.map! { |x| x % p == 0 ? -1 : x }
-end
-
-def sieve_rec arr
-  drop_while!(arr) { |x| x == -1 }
-  if arr.empty? then
-    []
-  else
-    p = arr.shift
-    [p] + sieve_rec(sieve_once(arr, p))
+def sieve_once arr, pos
+  i = pos
+  while arr[i] != nil
+    arr[i] = -1
+    i += pos
   end
 end
 
 def sieve n
-  sieve_rec (2..n).to_a
+
+  result = []
+  arr = (0..n).to_a
+  pos = 2
+
+  while arr[pos] != nil
+    result << pos
+    sieve_once(arr, pos)
+    pos = move(arr, pos)
+  end
+
+  result
 end
 
 p sieve(2_000_000).inject { |sum, x| sum + x }
