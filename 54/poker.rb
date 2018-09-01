@@ -97,53 +97,42 @@ Hand = Struct.new(:cards) do
 end
 
 class OnePair
-  def matches(hand)
+  def match(hand)
     faces = hand.group_by { |card| card.face }
-    faces.any? { |_, cards| cards.count >= 2 }
-  end
-  def cards(hand)
-    faces = hand.group_by { |card| card.face }
-    faces.select { |_, cards| cards.count >= 2 }.first[1]
+    pairs = faces.select { |_, cards| cards.count >= 2 }
+    pairs.any? && pairs.first[1]
   end
 end
 
 class TwoPairs
-  def matches(hand)
-    faces = hand.group_by { |card| card.face }
-    pairs = faces.select { |_, cards| cards.count >= 2 }
-    pairs.count >= 2
-  end
-  def cards(hand)
+  def match(hand)
     faces = hand.group_by { |card| card.face}
     pairs = faces.select { |_, cards| cards.count >= 2 }.map { |_, cards| cards }
-    pairs.flatten
+    pairs.count == 2 && pairs.flatten
   end
 end
 
 class ThreeOfAKind
-  def matches(hand)
+  def match(hand)
     faces = hand.group_by { |card| card.face }
-    faces.any? { |_, cards| cards.count >= 3 }
-  end
-  def cards(hand)
-    faces = hand.group_by { |card| card.face }
-    faces.select { |_, cards| cards.count >= 3 }.first[1]
+    tripples = faces.select { |_, cards| cards.count >= 3 }
+    tripples.any? && tripples.first[1]
   end
 end
 
 class FourOfAKind
-  def matches(hand)
+  def match(hand)
     faces = hand.group_by { |card| card.face }
-    faces.any? { |_, cards| cards.count == 4 }
-  end
-  def cards(hand)
-    faces = hand.group_by { |card| card.face }
-    faces.select { |_, cards| cards.count == 4 }.first[1]
+    quadruples = faces.select { |_, cards| cards.count == 4 }
+    quadruples.any? && quadruples.first[1]
   end
 end
 
 class FullHouse
-  def matches(hand)
+  def match(hand)
+    matches?(hand) && hand.cards
+  end
+  def matches?(hand)
     faces = hand.group_by { |card| card.face }
     return (
       faces.count == 2 && 
@@ -151,13 +140,13 @@ class FullHouse
       faces.any? { |_, cards| cards.count == 2 }
     )
   end
-  def cards(hand)
-    hand.cards
-  end
 end
 
 class Straight
-  def matches(hand)
+  def match(hand)
+    matches?(hand) && hand.cards
+  end
+  def matches?(hand)
     sorted = hand.order_by_face_asc
     cards = sorted.cards
     i = cards.first.ord - 1
@@ -167,32 +156,29 @@ class Straight
     end
     true
   end
-  def cards(hand)
-    hand.cards
-  end
 end
 
 class Flush
-  def matches(hand)
+  def match(hand)
     suits = hand.group_by { |card| card.suit }
-    suits.count == 1
-  end
-  def cards(hand)
-    hand.cards
+    suits.count == 1 && hand.cards
   end
 end
 
 class StraightFlush
-  def matches(hand)
-    Straight.new.matches(hand) && Flush.new.matches(hand)
+  def match(hand)
+    matches?(hand) && hand.cards
   end
-  def cards(hand)
-    hand.cards
+  def matches?(hand)
+    Straight.new.match(hand) && Flush.new.match(hand)
   end
 end
 
 class RoyalFlush
-  def matches(hand)
+  def match(hand)
+    matches?(hand) && hand.cards
+  end
+  def matches?(hand)
     sorted = hand.order_by_face_asc
     cards = sorted.cards
     suit = cards.first.suit
@@ -204,9 +190,6 @@ class RoyalFlush
       cards[3] == Card.new("K", suit) &&
       cards[4] == Card.new("A", suit)
       )
-  end
-  def cards(hand)
-    hand.cards
   end
 end
 
@@ -238,16 +221,16 @@ end
 
 def winner(first_hand, second_hand)
   $ranks.each do |rank|
-    if rank.matches(first_hand) && !rank.matches(second_hand)
+    first_match = rank.match(first_hand)
+    second_match = rank.match(second_hand)
+    if first_match && !second_match
       return :first
     end
-    if !rank.matches(first_hand) && rank.matches(second_hand)
+    if !first_match && second_match
       return :second
     end
-    if rank.matches(first_hand) && rank.matches(second_hand)
-      first_ranked_cards = rank.cards(first_hand)
-      second_ranked_cards = rank.cards(second_hand)
-      winner = highest_card(first_ranked_cards, second_ranked_cards)
+    if first_match && second_match
+      winner = highest_card(first_match, second_match)
       if winner != :draw
         return winner
       else
